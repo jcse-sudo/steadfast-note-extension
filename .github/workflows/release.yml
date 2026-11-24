@@ -1,1 +1,36 @@
-name: placeholder
+name: Build extension zip + GitHub Release
+
+# Rayhan push করলেই (main-এ) zip বানাবে।
+# Release বানাতে চাইলে tag দাও: git tag v1.1.0 && git push origin v1.1.0
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check manifest + JS syntax
+        run: |
+          python3 -m json.tool Note/manifest.json > /dev/null && echo "manifest OK"
+          node --check Note/content.js && node --check Note/background.js && node --check Note/popup.js && echo "JS OK"
+      - name: Zip extension
+        run: |
+          cd Note && zip -r ../steadfast-note-extension.zip . -x "*.md" "test-page.html" "create-icons.html" "create_icons.py" ".vscode/*"
+          cd .. && ls -lh steadfast-note-extension.zip && unzip -l steadfast-note-extension.zip
+      - name: Upload zip (every push)
+        uses: actions/upload-artifact@v4
+        with:
+          name: steadfast-note-extension
+          path: steadfast-note-extension.zip
+      - name: Create GitHub Release (only on tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: steadfast-note-extension.zip
+          generate_release_notes: true
