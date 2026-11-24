@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Note Auto-Fill</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>📝 Note Auto-Fill</h2>
+      <div class="header-actions">
+        <button id="floatingBtn" class="btn-floating" title="ফ্লোটিং উইন্ডো দেখান">🎯</button>
+        <button id="menuBtn" class="btn-menu" title="মেনু">⋮</button>
+      </div>
+    </div>
+
+    <div id="menuDropdown" class="menu-dropdown">
+      <div class="menu-item" id="addMenuItem">➕ নতুন মেসেজ যোগ করুন</div>
+      <div class="menu-item danger" id="clearAllMenuItem">🗑️ সব মেসেজ মুছে ফেলুন</div>
+    </div>
+
+    <div id="updateBanner" class="update-banner" style="display:none">
+      <span id="updateText"></span>
+      <a id="updateLink" href="#" target="_blank" rel="noopener">ডাউনলোড</a>
+      <button id="updateDismiss" class="btn-update-dismiss" title="বন্ধ করুন">✕</button>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="message" role="tab">মেসেজ</button>
+      <button class="tab-btn" data-tab="order" role="tab">অর্ডার</button>
+      <button class="tab-btn" data-tab="rider" role="tab">রাইডার</button>
+    </div>
+
+    <!-- মেসেজ ট্যাব — আগের UI হুবহু -->
+    <div id="tab-message" class="tab-panel active">
+      <div id="messagesList" class="messages-list">
+        <!-- Messages will be loaded here -->
+      </div>
+    </div>
+
+    <!-- অর্ডার ট্যাব — ছোট ফর্ম: নাম, ফোন, প্রোডাক্ট, প্রাইস, বিবরণ, এলাকা, চার্জ, Note -->
+    <div id="tab-order" class="tab-panel">
+      <div class="order-form">
+        <div class="order-meta">
+          <span>অর্ডার আইডি (অটো): <strong id="ordAutoId">—</strong></span>
+          <span>মোট COD: <strong id="ordCodTotal">৳০</strong></span>
+        </div>
+
+        <label>কাস্টমারের নাম *</label>
+        <input type="text" id="ordName" placeholder="কাস্টমারের নাম">
+
+        <label>ফোন *</label>
+        <input type="tel" id="ordPhone" placeholder="01XXXXXXXXX (১১ সংখ্যা)" maxlength="11">
+
+        <label>প্রোডাক্ট (কোড বা নাম)</label>
+        <input type="text" id="ordProduct" placeholder="যেমন: JC_CH_00043 / ধান ছড়ি চেইন">
+
+        <label>প্রাইস (৳) *</label>
+        <input type="number" id="ordPrice" placeholder="0" min="0" step="1">
+
+        <label>বিবরণ</label>
+        <input type="text" id="ordDesc" placeholder="প্রোডাক্টের বিবরণ (ঐচ্ছিক)">
+
+        <div class="form-row">
+          <div class="form-col">
+            <label>এলাকা</label>
+            <select id="ordDeliveryArea">
+              <option value="inside">ঢাকা সিটি — ৭০</option>
+              <option value="outside">ঢাকার বাইরে — ১৩০</option>
+            </select>
+          </div>
+          <div class="form-col">
+            <label>ডেলিভারি চার্জ (৳)</label>
+            <input type="number" id="ordDeliveryCharge" value="70" min="0" step="1">
+          </div>
+        </div>
+
+        <label>Note-এ সেভ করা মেসেজ (ঐচ্ছিক)</label>
+        <select id="ordNoteMsg">
+          <option value="">— কোনো মেসেজ নয় —</option>
+        </select>
+
+        <label>Note — এটাই Steadfast-এর Note ফিল্ডে বসবে</label>
+        <p class="form-hint">এলাকা বা ঐচ্ছিক মেসেজ বদলালে ডেলিভারি চার্জের ডিটেলস নিজে বসবে, চাইলে হাতে এডিট করা যাবে।</p>
+        <textarea id="ordNote" rows="2" placeholder="ডেলিভারি চার্জ: ৭০ টাকা।"></textarea>
+
+        <div id="ordError" class="form-error"></div>
+        <div id="ordResult" class="form-result"></div>
+
+        <div class="form-actions">
+          <button id="ordFillBtn" class="btn-save" type="button">📦 Steadfast ফর্মে বসাও</button>
+          <button id="ordClearBtn" class="btn-cancel" type="button">মুছে ফেলো</button>
+        </div>
+        <p class="form-hint">সাবমিট হবে না — Steadfast সাইটে ফিল্ডগুলো দেখে নিয়ে আপনিই Create চাপবেন। ঠিকানা Steadfast-এ হাতে লিখবেন।</p>
+
+        <h4 class="section-title">সাম্প্রতিক অর্ডার (শেষ ১০টা)</h4>
+        <div id="recentOrdersList" class="recent-list"></div>
+      </div>
+    </div>
+
+    <!-- রাইডার ট্যাব — পোর্টালের রেটিং পেজে বসানোর ডিফল্ট রেটিং + মেসেজ -->
+    <div id="tab-rider" class="tab-panel">
+      <div class="rider-form">
+        <p class="form-hint">ডেলিভারি হওয়া অর্ডারের পেজে Rate rider-এ ক্লিক করলেই এই রেটিং + মেসেজ বসে যাবে — Submit আপনিই চাপবেন। রেটিং বদলালে সেই রেটিংয়ের সেভ করা কমেন্ট দেখাবে।</p>
+        <label>ডিফল্ট রেটিং</label>
+        <select id="riderDefaultRating">
+          <option value="Excellent" selected>Excellent</option>
+          <option value="Good">Good</option>
+          <option value="Average">Average</option>
+          <option value="Bad">Bad</option>
+          <option value="Very Bad">Very Bad</option>
+        </select>
+
+        <label>কমেন্ট (মেসেজ) — প্রতিটা রেটিংয়ের আলাদা</label>
+        <textarea id="riderDefaultComment" rows="3">দ্রুত ডেলিভারি দেওয়ার জন্য ধন্যবাদ।</textarea>
+
+        <div id="riderError" class="form-error"></div>
+        <div id="riderSaved" class="form-result"></div>
+        <button id="riderSaveBtn" class="btn-save" type="button">💾 এই রেটিংয়ের কমেন্ট সেভ করো</button>
+      </div>
+    </div>
+
+    <div id="editModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modalTitle">নতুন মেসেজ</h3>
+          <button class="btn-close" id="closeModal">✕</button>
+        </div>
+        <div class="modal-body">
+          <label>টাইটেল:</label>
+          <input type="text" id="editTitle" placeholder="মেসেজের টাইটেল লিখুন..." maxlength="50">
+
+          <label>মেসেজ:</label>
+          <textarea id="editMessage" placeholder="আপনার কাস্টম মেসেজ লিখুন (max. 400 chars)..." maxlength="400"></textarea>
+          <div class="char-count"><span id="charCount">0</span>/400</div>
+        </div>
+        <div class="modal-footer">
+          <button id="saveMessageBtn" class="btn-save">💾 সেভ করুন</button>
+          <button id="cancelBtn" class="btn-cancel">বাতিল</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="footer">
+      <p>By <strong>RAYHAN</strong> 💙</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

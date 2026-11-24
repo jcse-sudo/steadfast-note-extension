@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Page - Note Field</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #333;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .submit-btn {
+      background: #667eea;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .submit-btn:hover {
+      background: #764ba2;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    .info {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      border-left: 4px solid #2196f3;
+    }
+  </style>
+</head>
+<body>
+  <h1>📝 Test Page - Note Field Auto-Fill</h1>
+
+  <div class="info">
+    <strong>এই পেজটি Extension টেস্ট করার জন্য</strong><br>
+    1. Extension খুলুন<br>
+    2. মেসেজ যোগ করুন<br>
+    3. টাইটেলে ক্লিক করুন বা Ctrl+Shift+1 প্রেস করুন<br>
+    4. নিচের "Note" ফিল্ডে মেসেজ ফিল হবে<br>
+    5. অর্ডার ট্যাবে ফর্ম ভরে "Steadfast ফর্মে বসাও" চাপলে নিচের সব ফিল্ড ভরবে<br>
+    <br>
+    <strong>নোট:</strong> v1.1.0 থেকে content script শুধু steadfast.com.bd-তে চলে।
+    এই টেস্ট পেজে চেক করতে chrome://extensions-এ গিয়ে এক্সটেনশনের
+    "Allow access to file URLs" চালু করুন, তারপর পেজ রিফ্রেশ করুন।
+  </div>
+
+  <form>
+    <div class="form-group">
+      <label>Phone#</label>
+      <input type="text" placeholder="Type Phone Number">
+    </div>
+
+    <div class="form-group">
+      <label>Invoice</label>
+      <input type="text" placeholder="Type Invoice (If any)">
+    </div>
+
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" placeholder="Type Recipient Name">
+    </div>
+
+    <div class="form-group">
+      <label>Address</label>
+      <textarea placeholder="Type Address"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>COD Amount</label>
+      <input type="text" placeholder="Type COD Amount">
+    </div>
+
+    <div class="form-group">
+      <label>Note</label>
+      <textarea placeholder="Type Note(max. 400 Chars)" maxlength="400"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Item Description</label>
+      <textarea placeholder="Type Item description(max. 400 Chars)"></textarea>
+    </div>
+
+    <button type="button" class="submit-btn">Submit</button>
+  </form>
+
+  <script>
+    // Show alert when note field is filled
+    const noteField = document.querySelector('textarea[placeholder*="Type Note"]');
+    if (noteField) {
+      noteField.addEventListener('input', function() {
+        if (this.value) {
+          console.log('Note field filled with:', this.value);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
