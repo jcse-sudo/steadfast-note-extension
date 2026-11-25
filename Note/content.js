@@ -1,5 +1,5 @@
 // ============================================================
-// Note Field Auto-Fill — content.js (v2.2.0)
+// Note Field Auto-Fill — content.js (v2.5.0)
 // পুরনো Note / floating অপরিবর্তিত
 // v2.1: Steadfast-এর রেটিং পেজে (consignment/rating/<id>) ডিফল্ট
 // রেটিং + ধন্যবাদ-মেসেজ বসানো হয় — Submit কখনো অটো হবে না,
@@ -8,6 +8,8 @@
 // Invoice/Note); ঠিকানা আর Area (thana/district) ভরা হয় না;
 // অর্ডার আইডি তারিখ + দিনের কাউন্টার (DDMMYY + ২ সংখ্যা, যেমন 24112601); রেটিংয়ের কমেন্ট
 // এখন প্রতিটা রেটিংয়ের আলাদা (riderComment_<rating>)।
+// v2.5: রেটিং গেট — শুধু Delivered (সাকসেস) পার্সেলেই Excellent
+// অটো-ফিল + "⭐ রেটিং দিন" বাটন; Partial/Pending-এ কিছু বসবে না।
 // লাইভ ফর্মের লেবেল (2026-11-24 যাচাই, add-parcel/regular):
 // "Phone number", "Name", "Cash on delivery", "Invoice / order ID
 // (optional)", "Item description (optional)", "Note (optional)".
@@ -647,6 +649,7 @@ function makeResizable(element) {
 // ------------------------------------------------------------
 // v2.1 — Steadfast রেটিং পেজে অটো-ফিল (পোর্টালের নিজের ফর্মে)
 // v2.2 — কমেন্ট এখন প্রতিটা রেটিংয়ের আলাদা (riderComment_<rating>)
+// v2.5 — গেট: শুধু Delivered হলেই অটো-ফিল + বাটন (Partial/Pending-এ নয়)।
 // - /user/consignment/rating/<id>: "Rate this rider" ড্রপডাউনে
 //   সেভ করা ডিফল্ট রেটিং (ডিফল্ট Excellent) বসবে — শুধু এখনো
 //   "Select" থাকলে; Comment বক্সে ওই রেটিংয়ের সেভ করা মেসেজ বসবে —
@@ -706,7 +709,95 @@ function showRatingNotice(text) {
   setTimeout(function() { if (n.parentNode) n.remove(); }, 12000);
 }
 
+// ------------------------------------------------------------
+// v2.5 — রেটিং গেট: শুধু Delivered (সাকসেস) পার্সেলেই অটো-ফিল
+// - অর্ডার পেজের স্ট্যাটাস কার্ডে লেখা থাকে "Status: Delivered" /
+//   "Status: Partial delivery" / "Status: Pending" (ব্যাজে "• Delivered" /
+//   "• Partial delivery")। ট্র্যাকারে "Delivered — Not yet" থাকে, তাই
+//   খালি "Delivered" শব্দ মেলানো যাবে না — "Status:" দিয়েই মেলাতে হবে।
+// - রেটিং পেজে স্ট্যাটাস লেখা থাকে না, তাই অর্ডার পেজে স্ট্যাটাস
+//   chrome.storage.local-এ রেকর্ড করা হয় (ratingGate_<id>); রেটিং
+//   পেজ সেটাই পড়ে। রেকর্ড না থাকলে (সরাসরি URL খুললে) অটো-ফিল নয়।
+// - Partial/Pending-এ ফ্লোটিং "⭐ রেটিং দিন" বাটনও দেখাবে না।
+// ------------------------------------------------------------
+const RATING_GATE_KEY_PREFIX = 'ratingGate_';
+
+function normalizeDeliveryStatus(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (s === 'delivered') return 'delivered';
+  if (s.indexOf('partial') !== -1) return 'partial';
+  if (s.indexOf('pending') !== -1) return 'pending';
+  if (s.indexOf('cancel') !== -1) return 'cancelled';
+  if (s.indexOf('exception') !== -1) return 'exceptional';
+  if (s === '') return 'unknown';
+  return 'other';
+}
+
+// পেজের টেক্সট থেকে স্ট্যাটাস বের করা (টেস্টযোগ্য pure ফাংশন)।
+// (১) "Status: X" লাইন — স্ট্যাটাস কার্ডের হেডিং।
+// (২) না পেলে "• X" ব্যাজ (• Delivered / • Partial delivery)।
+// খালি "Delivered" শব্দ ধরা হয় না — ট্র্যাকারে "Delivered — Not yet" থাকে।
+function detectDeliveryStatusFromText(text) {
+  const t = String(text || '');
+  const m = /Status:\s*([^\n\r]+)/i.exec(t);
+  if (m) return normalizeDeliveryStatus(m[1]);
+  const pill = /[•·]\s*(Delivered|Partial delivery|Pending|Cancelled|Exceptional)/i.exec(t);
+  if (pill) return normalizeDeliveryStatus(pill[1]);
+  return 'unknown';
+}
+
+function getDeliveryStatus() {
+  try {
+    const bodyText = document.body ? (document.body.innerText || '') : '';
+    return detectDeliveryStatusFromText(bodyText);
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+function consignmentIdFromPath(path) {
+  const m = /\/user\/consignment\/(?:rating\/)?(\d+)/.exec(String(path || ''));
+  return m ? m[1] : null;
+}
+
+function recordDeliveryStatus(id, status) {
+  if (!id) return;
+  try {
+    const key = RATING_GATE_KEY_PREFIX + id;
+    const obj = {};
+    obj[key] = { status: status, at: Date.now() };
+    chrome.storage.local.set(obj, function() {});
+  } catch (e) { /* রেকর্ড ব্যর্থ হলে গেট শুধু বন্ধ থাকবে */ }
+}
+
+// রেটিং পেজের গেট-সিদ্ধান্ত (টেস্টযোগ্য pure ফাংশন)।
+// record: {status} বা null/undefined (রেকর্ড নেই)।
+// allow: শুধু status === 'delivered' হলে।
+// notice: partial/pending-এর মতো জানা স্ট্যাটাসে জানানোর মেসেজ; রেকর্ড
+// না থাকলে চুপ (হাতে রেটিং দিতে পারবেন)।
+function decideRatingGate(record) {
+  if (!record || !record.status) return { allow: false, notice: null };
+  if (record.status === 'delivered') return { allow: true, notice: null };
+  if (record.status === 'partial') return { allow: false, notice: 'পার্শিয়াল ডেলিভারি — রেটিং অটো বসানো হয়নি' };
+  if (record.status === 'pending') return { allow: false, notice: 'পার্সেল এখনো ডেলিভার হয়নি — রেটিং অটো বসানো হয়নি' };
+  return { allow: false, notice: 'ডেলিভারি সাকসেস নয় — রেটিং অটো বসানো হয়নি' };
+}
+
 function autoFillRatingPage() {
+  // v2.5 গেট: অর্ডার পেজে রেকর্ড করা স্ট্যাটাস Delivered হলেই ফিল হবে।
+  const id = consignmentIdFromPath(window.location.pathname);
+  const gateKey = RATING_GATE_KEY_PREFIX + (id || '');
+  chrome.storage.local.get([gateKey], function(gateResult) {
+    const decision = decideRatingGate(gateResult ? gateResult[gateKey] : null);
+    if (!decision.allow) {
+      if (decision.notice) showRatingNotice(decision.notice);
+      return;
+    }
+    fillRatingForm();
+  });
+}
+
+function fillRatingForm() {
   // v2.2: ওই রেটিংয়ের নিজের কমেন্ট (riderComment_<rating>); না থাকলে
   // পুরনো একক ডিফল্ট (v2.1), তারপর রেটিংয়ের ডিফল্ট। খালি সেভ করা
   // থাকলে (Bad/Very Bad-এর ডিফল্ট) বক্স খালিই থাকে — ইউজার লিখবেন।
@@ -742,8 +833,25 @@ function autoFillRatingPage() {
   });
 }
 
+let ratingGatePath = '';
+let ratingGateRetries = 0;
+
 function addRateRiderButton() {
   if (document.getElementById('steadfast-rate-rider-btn')) return;
+  const path = window.location.pathname || '';
+  if (path !== ratingGatePath) { ratingGatePath = path; ratingGateRetries = 0; }
+  // v2.5 গেট: স্ট্যাটাস রেকর্ড করা হয় (রেটিং পেজের জন্য); বাটন শুধু
+  // Delivered হলেই দেখাবে — Partial/Pending-এ নয়।
+  const id = consignmentIdFromPath(path);
+  const status = getDeliveryStatus();
+  recordDeliveryStatus(id, status);
+  // স্ট্যাটাস এখনো পেজে আসেনি (SPA দেরিতে রেন্ডার) — কয়েকবার আবার দেখা হবে
+  if (status === 'unknown' && ratingGateRetries < 5) {
+    ratingGateRetries++;
+    setTimeout(function() { addRateRiderButton(); }, 1500);
+    return;
+  }
+  if (status !== 'delivered') return;
   const links = Array.from(document.querySelectorAll('a')).filter(function(a) {
     return a.offsetParent !== null && /rate rider/i.test(a.textContent || '');
   });

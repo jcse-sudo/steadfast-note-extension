@@ -1,11 +1,10 @@
 // ============================================================
-// Note Field Auto-Fill — background.js (v1.3.2)
+// Note Field Auto-Fill — background.js (v1.4.0)
 // পুরনো শর্টকাট হ্যান্ডলার অপরিবর্তিত + Route B GitHub আপডেট চেকার
 // ============================================================
 
-// GitHub আপডেট চেকার — Rayhan-কে এই এক লাইনই ভরতে হবে:
-// নিজের GitHub ইউজারনেম/repo বসান, যেমন: 'rayhan-saykat/steadfast-note-extension'
-// যতক্ষণ এখানে USERNAME লেখা থাকবে, চেকার কিছু করবে না (কোনো নেটওয়ার্ক কল নয়)।
+// GitHub আপডেট চেকার — repo: jcse-sudo/steadfast-note-extension (লাইভ)।
+// নতুন ভার্সন দিতে manifest.json-এর version বাড়িয়ে push + Release দিলেই হবে।
 const GITHUB_REPO = 'jcse-sudo/steadfast-note-extension';
 
 function isGithubConfigured() {
